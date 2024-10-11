@@ -34,6 +34,7 @@ esp_err_t ws_handler(httpd_req_t *req) {
     return ret;
   }
 
+
   // 프레임 페이로드가 있는 경우
   if (ws_pkt.len > 0) {
     // 페이로드를 저장할 버퍼 할당
@@ -53,7 +54,7 @@ esp_err_t ws_handler(httpd_req_t *req) {
     }
 
     buf[ws_pkt.len] = '\0';  // Null-terminate the payload
-    Serial.printf("Received WebSocket message: %s\n", buf);
+    //Serial.printf("Received WebSocket message: %s\n", buf);
 
     // 분할된 프레임 처리
     if (!ws_pkt.final) {
@@ -73,18 +74,37 @@ esp_err_t ws_handler(httpd_req_t *req) {
     }
 
     // 값 추출 및 기본값 설정 (const char* 사용)
-    const char *action = jsonDoc["action"] | "";
+    const char *cmd = jsonDoc["cmd"] | "";
     const char *state = jsonDoc["state"] | "";
     int angle = jsonDoc["angle"] | 0;
     int speed = jsonDoc["speed"] | 0;
 
     // 액션 처리
-    if (strcmp(action, "move") == 0) {
+    if (strcmp(cmd, "move") == 0) {
+
       car_angle = angle;
       car_speed = speed;
-      Serial.printf("car angle %d and speed %d updated\n", angle, speed);
+
+      //Serial.printf("car angle %d and speed %d updated\n", angle, speed);
+
       // 서보모터 제어나 다른 장치 제어 코드를 여기 추가할 수 있습니다.
-    } else if (strcmp(action, "led") == 0) {  // 추가된 'led' 액션 처리
+      if (speed != 0) {
+        int lspeed = speed + car_angle * 0.5;
+        int rspeed = speed - car_angle * 0.5;
+        Serial.printf("run Car forward, %d, %d", lspeed, rspeed);
+        Car_forward(lspeed, rspeed);
+      }
+      else{
+        car_speed = 0;
+        //Serial.printf("run speed 0");
+      }
+    
+    } else if (strcmp(cmd, "stop") == 0) {
+      car_speed = 0;
+      Serial.printf("run Car stop");
+      Car_stop();
+
+    } else if (strcmp(cmd, "led") == 0) {  // 추가된 'led' 액션 처리
       if (strcmp(state, "on") == 0) {
         digitalWrite(LED_BUILTIN, HIGH);
         Serial.println("LED turned on");
@@ -92,7 +112,7 @@ esp_err_t ws_handler(httpd_req_t *req) {
         digitalWrite(LED_BUILTIN, LOW);
         Serial.println("LED turned off");
       } else {
-        Serial.println("Unknown state for LED action");
+        Serial.println("Unknown state for LED ");
       }
     }
 
@@ -114,9 +134,11 @@ esp_err_t ws_handler(httpd_req_t *req) {
   } else {
     Serial.println("Received empty WebSocket message");
   }
-
   return ESP_OK;
 }
+
+
+
 
 // 대체 WebSocket 핸들러 함수
 esp_err_t alt_ws_handler(httpd_req_t *req) {
@@ -176,13 +198,13 @@ esp_err_t alt_ws_handler(httpd_req_t *req) {
     }
 
     // 값 추출 및 기본값 설정 (const char* 사용)
-    const char *action = jsonDoc["action"] | "";
+    const char *cmd = jsonDoc["cmd"] | "";
     const char *state = jsonDoc["state"] | "";
     int angle = jsonDoc["angle"] | 0;
     int speed = jsonDoc["speed"] | 0;
 
     // 액션 처리
-    if (strcmp(action, "move") == 0) {
+    if (strcmp(cmd, "move") == 0) {
       car_angle = angle;
       car_speed = speed;
       Serial.printf("car angle %d and speed %d updated\n", angle, speed);
@@ -196,7 +218,7 @@ esp_err_t alt_ws_handler(httpd_req_t *req) {
       } else {
         Car_stop();
       }
-    } else if (strcmp(action, "led") == 0) {  // 추가된 'led' 액션 처리
+    } else if (strcmp(cmd, "led") == 0) {  // 추가된 'led' 액션 처리
       if (strcmp(state, "on") == 0) {
         digitalWrite(LED_BUILTIN, HIGH);
         Serial.println("LED turned on");
@@ -204,7 +226,7 @@ esp_err_t alt_ws_handler(httpd_req_t *req) {
         digitalWrite(LED_BUILTIN, LOW);
         Serial.println("LED turned off");
       } else {
-        Serial.println("Unknown state for LED action");
+        Serial.println("Unknown state for LED ");
       }
     }
 

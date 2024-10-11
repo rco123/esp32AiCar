@@ -17,7 +17,6 @@ int trim = 0;
 #include "SetMotor.h"
 #include "jsonContws.h"
 
-
 // 전역 변수 선언
 volatile int client_count = 0;
 SemaphoreHandle_t client_count_semaphore;
@@ -51,10 +50,12 @@ httpd_handle_t alt_ws_httpd = NULL;
 static esp_err_t stream_handler(httpd_req_t *req) {
     esp_err_t res = ESP_OK;
 
+    Serial.printf("start stream_handler %d\n", client_count);
+
     // 클라이언트 수 증가
     if (xSemaphoreTake(client_count_semaphore, portMAX_DELAY)) {
         client_count++;
-        if (client_count == 1) {
+        if (client_count > 0) {
             // 첫 번째 클라이언트가 연결되었으므로 캡처 태스크 시작
             if (capture_task_handle == NULL) {
                 capture_task_running = true;  // 플래그를 true로 설정
@@ -90,17 +91,22 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         }
     }
 
+    Serial.printf("end stream_handler %d\n", client_count);
+
     return ESP_OK;
 }
+
 
 // stream_handler 수정
 static esp_err_t alt_stream_handler(httpd_req_t *req) {
     esp_err_t res = ESP_OK;
 
+    Serial.printf("start alt_stream_handler %d\n", client_count);
+
     // 클라이언트 수 증가
     if (xSemaphoreTake(client_count_semaphore, portMAX_DELAY)) {
         client_count++;
-        if (client_count == 1) {
+        if (client_count > 0) {
             // 첫 번째 클라이언트가 연결되었으므로 캡처 태스크 시작
             if (capture_task_handle == NULL) {
                 capture_task_running = true;  // 플래그를 true로 설정
@@ -136,9 +142,9 @@ static esp_err_t alt_stream_handler(httpd_req_t *req) {
         }
     }
 
+    Serial.printf("end alt_stream_handler %d\n", client_count);
     return ESP_OK;
 }
-
 
 static esp_err_t send_frame(httpd_req_t *req) {
     esp_err_t res = ESP_OK;
@@ -198,7 +204,7 @@ void capture_frame(void* param) {
             if (!shared_fb) {
                 Serial.println("Failed to capture frame");
             } else {
-                Serial.printf("Captured frame: %u bytes\n", shared_fb->len);
+                //Serial.printf("Captured frame: %u bytes\n", shared_fb->len);
             }
             xSemaphoreGive(xSemaphore);
         }
@@ -261,15 +267,15 @@ void startCameraServer() {
     };  
 
 
-  config.server_port =80;
-  config.ctrl_port =1080;
+  config.server_port =81;
+  config.ctrl_port =1081;
   Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
   if (httpd_start(&stream_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(stream_httpd, &stream_uri);
   }
 
-  config.server_port =81;
-  config.ctrl_port += 1081;
+  config.server_port =82;
+  config.ctrl_port += 1082;
   Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
   if (httpd_start(&alt_stream_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(alt_stream_httpd, &alt_stream_uri);  // 추가된 핸들러
@@ -277,8 +283,8 @@ void startCameraServer() {
 
   // move control port
 
-  config.server_port = 90;  // 포트 90번 설정
-  config.ctrl_port = 1090;
+  config.server_port = 91;  // 포트 90번 설정
+  config.ctrl_port = 1091;
   Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
   if (httpd_start(&ws_httpd, &config) == ESP_OK) {
       // WebSocket 핸들러 등록
@@ -289,9 +295,8 @@ void startCameraServer() {
       }
   }
 
-
-  config.server_port = 91;  // 포트 91번 설정
-  config.ctrl_port = 1091;
+  config.server_port = 92;  // 포트 91번 설정
+  config.ctrl_port = 1092;
   Serial.printf("Starting stream server on port: '%d'\n", config.server_port);
   if (httpd_start(&alt_ws_httpd, &config) == ESP_OK) {
       // WebSocket 핸들러 등록
@@ -301,7 +306,6 @@ void startCameraServer() {
           Serial.println("Failed to register WebSocket handler");
       }
   }
-
 
 
 }
