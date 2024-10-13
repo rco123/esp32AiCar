@@ -15,7 +15,9 @@ int trim = 0;
 #include "Arduino.h"
 #include "lib/dl_lib.h"
 #include "SetMotor.h"
-#include "jsonContws.h"
+#include "jsonContwsPC.h"
+#include "jsonContwsHP.h"
+
 
 // 전역 변수 선언
 volatile int client_count = 0;

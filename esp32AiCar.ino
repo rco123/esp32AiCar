@@ -4,6 +4,8 @@
   Set ap to 1 to use ESP32-CAM as Standalone Access Point with default IP 192.168.4.1
   Set ap to 0 to connect to a router using DHCP with hostname espressif
 */
+#include <EEPROM.h>
+
 #include <WiFi.h>
 #include "esp_wifi.h"
 #include "esp_camera.h"
@@ -20,6 +22,7 @@
 #define SCREEN_HEIGHT 32  // OLED 디스플레이의 높이
 #define OLED_RESET    -1  // OLED는 리셋 핀이 필요하지 않음
 
+extern int set_speed;
 
 // bool ap = 0;  //When it is 1, esp32 turns on wifi, the mobile phone is connected, and the IP is 192.168.4.1; when it is 0, it is connected to wifi, and the IP needs to be obtained through serial port printing.
 // const char* ssid = "ChinaNet_2.4G";        //AP Name or Router SSID
@@ -56,8 +59,34 @@ int maxconnection = 1;  // Only allow one device to connect
 // Webserver / Controls Function
 void startCameraServer();
 
+
 void setup() {
 
+    Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    Serial.println();
+
+    // EEPROM 시작, EEPROM 크기 512바이트 (ESP32에서 최대 4096바이트 설정 가능)
+    EEPROM.begin(8);
+
+    set_speed = EEPROM.read(4); // 저장된 값이 없으면 0을 기본값으로 사용
+    if(set_speed != 0){
+        // EEPROM에 새로운 속도 값을 저장
+        EEPROM.write(0, 0); // EEPROM에 값 기록
+        EEPROM.write(4, 0); // EEPROM에 값 기록
+        EEPROM.commit(); // 플래시 메모리에 기록 확정
+        Serial.println("init value to EEPROM.");
+        set_speed = 0;
+        Serial.print("set speed value loaded: ");
+        Serial.println(set_speed);
+
+    }
+    else{
+        // EEPROM에서 저장된 속도 값을 읽음
+        set_speed = EEPROM.read(0); // 저장된 값이 없으면 0을 기본값으로 사용
+        Serial.print("Saved speed value loaded: ");
+        Serial.println(set_speed);
+    }
 
     // Connect to Router
     WiFi.mode(WIFI_STA);
@@ -72,10 +101,8 @@ void setup() {
     // 8x16 폰트를 사용하여 문자열 출력
     ssd1306_write_string_8x16("WiFi IP:", 0, 0);
 
-
     String ipAddress = WiFi.localIP().toString();  // IP 주소를 문자열로 변환
     ssd1306_write_string_8x16( ipAddress.c_str() , 2, 0);  // 두 번째 줄 (row 값이 2)
-
 
     pinMode(SDA_PIN, OUTPUT);
     digitalWrite(SDA_PIN, LOW);
@@ -104,9 +131,6 @@ void setup() {
     // while(1);
 
     
-  Serial.begin(115200);
-  Serial.setDebugOutput(true);
-  Serial.println();
 
 
   // Camera Configuration - Again, don't touch.
@@ -195,7 +219,6 @@ void setup() {
   
   // WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Prevent brownouts by silencing them. You probably want to keep this.
   i2c_init();  //Initialize IIC, SDA is IO14, SCL is IO13, the pins are bound to the motor driver board and cannot be modified.
-
 
   //Start Webserver
   startCameraServer();
